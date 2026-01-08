@@ -1,589 +1,568 @@
-<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>族語 3 課程追蹤系統 (雲端版) | Indigenous Language Class 3 Tracking System</title>
-    
-    <!-- 1. 引入 Tailwind CSS (樣式) -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- 2. 引入 React 和 Babel (讓瀏覽器看得懂 React) -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- 3. 設定 Import Map (包含 Firebase SDK) -->
-    <script type="importmap">
-    {
-        "imports": {
-            "react": "https://esm.sh/react@18.2.0",
-            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-            "lucide-react": "https://esm.sh/lucide-react@0.263.1",
-            "firebase/app": "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js",
-            "firebase/analytics": "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js",
-            "firebase/firestore": "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js"
-        }
-    }
-    </script>
-</head>
-<body class="bg-stone-50">
-    <!-- 這裡是 React 程式掛載的點 -->
-    <div id="root"></div>
+import React, { useState, useEffect } from 'react';
+import { 
+    Plus, Trash2, RotateCcw, CheckCircle, XCircle, Users, 
+    ClipboardCheck, Upload, X, Eraser, Code, Copy, Info, 
+    MapPin, User, GraduationCap, Calendar, Clock, AlertCircle, 
+    FileText, Image, ExternalLink, Cloud 
+} from 'lucide-react';
 
-    <!-- 4. 主要程式碼 -->
-    <script type="text/babel" data-type="module">
-        import React, { useState, useEffect } from 'react';
-        import { createRoot } from 'react-dom/client';
-        import { 
-            Plus, Trash2, RotateCcw, CheckCircle, XCircle, Users, 
-            ClipboardCheck, Upload, X, Eraser, Code, Copy, Info, 
-            MapPin, User, GraduationCap, Calendar, Clock, AlertCircle, 
-            FileText, Image, ExternalLink, Cloud 
-        } from 'lucide-react';
+// 🔹 引入 Firebase 功能 (使用 ES Module)
+import { initializeApp } from "firebase/app";
+import { 
+    getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc, query 
+} from "firebase/firestore";
+import { 
+    getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken 
+} from "firebase/auth";
 
-        // 🔹 引入 Firebase 功能
-        import { initializeApp } from "firebase/app";
-        import { getAnalytics } from "firebase/analytics";
-        import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
+// ==========================================
+// 🔑 初始化 Firebase (使用平台環境變數)
+// ==========================================
+const firebaseConfig = JSON.parse(__firebase_config);
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // ==========================================
-        // 🔑 您的 Firebase 設定檔
-        // ==========================================
-        const firebaseConfig = {
-          apiKey: "AIzaSyDIOlzNjqvtK14VpInrJtvlayK5L_lsTmE",
-          authDomain: "indigenous-class-tracker-58cd7.firebaseapp.com",
-          projectId: "indigenous-class-tracker-58cd7",
-          storageBucket: "indigenous-class-tracker-58cd7.firebasestorage.app",
-          messagingSenderId: "858466883692",
-          appId: "1:858466883692:web:912a580fd7fd141d736049",
-          measurementId: "G-YL1HKBHS1B"
+// 定義集合名稱 (方便管理)
+const COLLECTION_NAME = 'students';
+
+const IndigenousLanguageTracker = () => {
+    // ==========================================
+    // 📝 初始名單資料 (完整 17 位學生)
+    // ==========================================
+    const initialData = [
+        { id: 1, name: "史翎", studentId: "11106210", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 2, name: "王妤君", studentId: "11206201", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 3, name: "廖于寰", studentId: "11206202", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 4, name: "胡弘易", studentId: "11206203", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 5, name: "呂頌恩", studentId: "11206210", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 6, name: "楊舒閑", studentId: "11206212", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 7, name: "董韋誠", studentId: "11206214", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 8, name: "蘇邱立宏", studentId: "11206215", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 9, name: "林子嫈", studentId: "11206217", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 10, name: "林芳宇", studentId: "11206221", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 11, name: "林詩晨", studentId: "11206222", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 12, name: "魏翔慧", studentId: "11206224", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 13, name: "黃湘茹", studentId: "11206225", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 14, name: "余晨儀", studentId: "11206226", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 15, name: "葛雯", studentId: "11206227", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 16, name: "林子嫣", studentId: "11206230", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+        { id: 17, name: "Malinda", studentId: "", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "" },
+    ];
+
+    const [user, setUser] = useState(null);
+    const [students, setStudents] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [errorInfo, setErrorInfo] = useState(null);
+
+    const [newStudentName, setNewStudentName] = useState('');
+    const [newStudentId, setNewStudentId] = useState('');
+    const [showImportModal, setShowImportModal] = useState(false);
+    const [importText, setImportText] = useState('');
+
+    // 🔹 1. 處理使用者登入 (Firebase Auth)
+    useEffect(() => {
+        const initAuth = async () => {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Auth Error:", error);
+                setErrorInfo({ title: "驗證錯誤", desc: "無法登入系統，請重新整理頁面。" });
+            }
         };
+        initAuth();
 
-        // 初始化 Firebase
-        let db;
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // 🔹 2. 監聽 Firestore 資料庫變化 (Public Data)
+    useEffect(() => {
+        if (!user) return;
+
+        // 使用符合規定的路徑: artifacts/{appId}/public/data/{collectionName}
+        const collectionRef = collection(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME);
+        const q = query(collectionRef); // 不使用複雜的 orderBy，改在前端排序
+
+        const unsubscribe = onSnapshot(q, 
+            (snapshot) => {
+                const studentsData = snapshot.docs.map(doc => ({
+                    id: doc.id, // 使用 string ID
+                    ...doc.data()
+                }));
+                
+                // 在前端進行排序 (依照 id 轉數字後排序)
+                studentsData.sort((a, b) => Number(a.id) - Number(b.id));
+                
+                setStudents(studentsData);
+                setIsLoading(false);
+                setErrorInfo(null);
+            }, 
+            (error) => {
+                console.error("讀取資料失敗:", error);
+                setErrorInfo({
+                    title: "資料讀取錯誤",
+                    desc: "無法連接到資料庫，請檢查網路連線或稍後再試。"
+                });
+                setIsLoading(false);
+            }
+        );
+
+        return () => unsubscribe();
+    }, [user]);
+
+    // 🔹 Helper: 取得文件參照
+    const getStudentDoc = (id) => doc(db, 'artifacts', appId, 'public', 'data', COLLECTION_NAME, id.toString());
+
+    // 🔹 切換狀態
+    const toggleStatus = async (id, field) => {
+        const student = students.find(s => s.id === id);
+        if (!student) return;
         try {
-            const app = initializeApp(firebaseConfig);
-            const analytics = getAnalytics(app);
-            db = getFirestore(app);
-            console.log("Firebase initialized successfully");
-        } catch (error) {
-            console.error("Firebase initialization failed:", error);
+            await updateDoc(getStudentDoc(id), { [field]: !student[field] });
+        } catch (e) { alert("更新失敗：" + e.message); }
+    };
+
+    // 🔹 更新備註
+    const handleNoteBlur = async (id, currentVal) => {
+        try {
+            await updateDoc(getStudentDoc(id), { note: currentVal });
+        } catch (e) { console.error("備註更新失敗", e); }
+    };
+
+    // 🔹 新增學生
+    const addStudent = async (e) => {
+        e.preventDefault();
+        if (!newStudentName.trim()) return;
+        
+        const newId = Date.now();
+        const newStudent = {
+            id: newId,
+            name: newStudentName,
+            studentId: newStudentId,
+            regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: ""
+        };
+        
+        try {
+            await setDoc(getStudentDoc(newId), newStudent);
+            setNewStudentName(''); setNewStudentId('');
+        } catch (e) { alert("新增失敗：" + e.message); }
+    };
+
+    // 🔹 批量匯入
+    const handleBulkImport = async () => {
+        if (!importText.trim()) return;
+        const lines = importText.trim().split('\n');
+        let count = 0;
+        
+        // 為了避免同時寫入衝突，使用簡單的延遲或 Promise.all
+        const promises = [];
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const parts = line.trim().split(/[\s,，\t]+/);
+            const name = parts[0];
+            const studentId = parts.length > 1 ? parts[1] : '';
+            if (!name) continue;
+
+            const newId = Date.now() + i;
+            const newStudent = {
+                id: newId, name: name, studentId: studentId,
+                regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: ""
+            };
+            
+            promises.push(setDoc(getStudentDoc(newId), newStudent));
+            count++;
         }
 
-        const IndigenousLanguageTracker = () => {
-            // ==========================================
-            // 📝 初始名單資料 (完整 17 位學生)
-            // ==========================================
-            const initialData = [
-                { id: 1, name: "史翎", studentId: "11106210", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 2, name: "王妤君", studentId: "11206201", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 3, name: "廖于寰", studentId: "11206202", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 4, name: "胡弘易", studentId: "11206203", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 5, name: "呂頌恩", studentId: "11206210", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 6, name: "楊舒閑", studentId: "11206212", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 7, name: "董韋誠", studentId: "11206214", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 8, name: "蘇邱立宏", studentId: "11206215", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 9, name: "林子嫈", studentId: "11206217", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 10, name: "林芳宇", studentId: "11206221", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 11, name: "林詩晨", studentId: "11206222", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 12, name: "魏翔慧", studentId: "11206224", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 13, name: "黃湘茹", studentId: "11206225", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 14, name: "余晨儀", studentId: "11206226", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 15, name: "葛雯", studentId: "11206227", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 16, name: "林子嫣", studentId: "11206230", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
-                { id: 17, name: "Malinda", studentId: "", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "南島文化研究碩士班" },
-            ];
+        try {
+            await Promise.all(promises);
+            alert(`成功匯入 ${count} 筆資料！`);
+            setImportText(''); setShowImportModal(false);
+        } catch (e) {
+            alert("匯入失敗: " + e.message);
+        }
+    };
 
-            const [students, setStudents] = useState([]);
-            const [isLoading, setIsLoading] = useState(true);
-            const [errorInfo, setErrorInfo] = useState(null); // 改為存儲物件以包含連結
+    // 🔹 刪除
+    const deleteStudent = async (id) => {
+        if (window.confirm('確定要刪除這位學生嗎？')) {
+            try {
+                await deleteDoc(getStudentDoc(id));
+            } catch (e) {
+                alert("刪除失敗: " + e.message);
+            }
+        }
+    };
 
-            const [newStudentName, setNewStudentName] = useState('');
-            const [newStudentId, setNewStudentId] = useState('');
-            const [showImportModal, setShowImportModal] = useState(false);
-            const [importText, setImportText] = useState('');
+    // 🔹 初始化資料庫
+    const uploadInitialData = async () => {
+        if (!window.confirm("確定要初始化資料庫嗎？將寫入 17 位學生名單。")) return;
+        setIsLoading(true);
+        try {
+            const promises = initialData.map(student => 
+                setDoc(getStudentDoc(student.id), student)
+            );
+            await Promise.all(promises);
+            alert("✅ 初始化完成！");
+        } catch (e) { alert("❌ 初始化失敗：" + e.message); }
+        setIsLoading(false);
+    };
 
-            // 🔹 監聽 Firebase 資料庫變化
-            useEffect(() => {
-                if (!db) {
-                    setErrorInfo({ title: "初始化錯誤", desc: "Firebase Config 設定有誤。" });
-                    setIsLoading(false);
-                    return;
-                }
+    // 🔹 清空
+    const clearAllData = async () => {
+        if (!window.confirm('確定要清空「所有」雲端資料嗎？此操作無法復原。')) return;
+        setIsLoading(true);
+        try {
+            const batchPromises = students.map(s => deleteDoc(getStudentDoc(s.id)));
+            await Promise.all(batchPromises);
+        } catch (e) {
+            alert("清空失敗: " + e.message);
+        }
+        setIsLoading(false);
+    };
 
-                // 訂閱 'students' 集合
-                const unsubscribe = onSnapshot(collection(db, "students"), 
-                    (snapshot) => {
-                        const studentsData = snapshot.docs.map(doc => ({
-                            id: Number(doc.id),
-                            ...doc.data()
-                        }));
-                        studentsData.sort((a, b) => a.id - b.id);
-                        
-                        setStudents(studentsData);
-                        setIsLoading(false);
-                        setErrorInfo(null); // 成功連線則清除錯誤
-                    }, 
-                    (error) => {
-                        console.error("讀取資料失敗:", error);
-                        // 根據錯誤代碼提供精確引導
-                        if (error.code === 'permission-denied') {
-                            setErrorInfo({
-                                title: "權限不足 (Permission Denied)",
-                                desc: "Firestore 安全規則未設為公開。請前往 Rules 頁面，將規則改為 allow read, write: if true;",
-                                link: "https://console.firebase.google.com/project/indigenous-class-tracker-58cd7/firestore/rules"
-                            });
-                        } else if (error.code === 'not-found') {
-                            setErrorInfo({
-                                title: "資料庫未建立 (Database Not Found)",
-                                desc: "您的專案尚未建立 Firestore 資料庫。請點擊下方按鈕，選擇 'Create Database' 並務必選取 'Start in test mode'。",
-                                link: "https://console.firebase.google.com/project/indigenous-class-tracker-58cd7/firestore"
-                            });
-                        } else {
-                            setErrorInfo({
-                                title: "連線錯誤",
-                                desc: `無法連線到資料庫 (${error.code})。請檢查網路連線。`,
-                                link: null
-                            });
-                        }
-                        setIsLoading(false);
-                    }
-                );
+    const checkPass = (s) => {
+        const finals = s.final0102 || s.final0109;
+        const required = s.regular && s.midterm && s.oral && finals;
+        return required;
+    };
 
-                return () => unsubscribe();
-            }, []);
+    const stats = {
+        total: students.length,
+        passed: students.filter(checkPass).length,
+        pending: students.filter(s => !checkPass(s)).length
+    };
 
-            // 🔹 切換狀態
-            const toggleStatus = async (id, field) => {
-                const student = students.find(s => s.id === id);
-                if (!student) return;
-                try {
-                    const docRef = doc(db, "students", id.toString());
-                    await updateDoc(docRef, { [field]: !student[field] });
-                } catch (e) { alert("更新失敗：" + e.message); }
-            };
+    // 錯誤處理畫面
+    if (errorInfo) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center text-red-600 gap-4 p-4 bg-red-50">
+                <AlertCircle size={48} />
+                <div className="text-xl font-bold">連線錯誤 (Connection Error)</div>
+                <div className="bg-white p-6 rounded-lg shadow-md max-w-lg border border-red-200">
+                    <p className="font-bold mb-2 text-lg text-red-700">{errorInfo.title}</p>
+                    <p className="mb-4 text-stone-700 leading-relaxed">{errorInfo.desc}</p>
+                </div>
+            </div>
+        );
+    }
 
-            // 🔹 更新備註
-            const handleNoteBlur = async (id, currentVal) => {
-                try {
-                    const docRef = doc(db, "students", id.toString());
-                    await updateDoc(docRef, { note: currentVal });
-                } catch (e) { console.error("備註更新失敗", e); }
-            };
+    if (isLoading && students.length === 0) {
+        return <div className="min-h-screen flex items-center justify-center text-stone-500 font-bold bg-stone-50">
+            <div className="animate-pulse flex flex-col items-center gap-2">
+                <Cloud className="w-8 h-8 text-teal-500" />
+                <span>載入雲端資料中... (Loading Cloud Data...)</span>
+            </div>
+        </div>;
+    }
 
-            // 🔹 新增學生
-            const addStudent = async (e) => {
-                e.preventDefault();
-                if (!newStudentName.trim()) return;
+    return (
+        <div className="min-h-screen bg-stone-50 p-4 md:p-8 font-sans text-stone-800">
+            <div className="max-w-7xl mx-auto relative">
                 
-                const newId = Date.now();
-                const newStudent = {
-                    id: newId,
-                    name: newStudentName,
-                    studentId: newStudentId,
-                    regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: ""
-                };
-                
-                try {
-                    await setDoc(doc(db, "students", newId.toString()), newStudent);
-                    setNewStudentName(''); setNewStudentId('');
-                } catch (e) { alert("新增失敗：" + e.message); }
-            };
-
-            // 🔹 批量匯入
-            const handleBulkImport = async () => {
-                if (!importText.trim()) return;
-                const lines = importText.trim().split('\n');
-                let count = 0;
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i];
-                    const parts = line.trim().split(/[\s,，\t]+/);
-                    const name = parts[0];
-                    const studentId = parts.length > 1 ? parts[1] : '';
-                    if (!name) continue;
-
-                    const newId = Date.now() + i;
-                    const newStudent = {
-                        id: newId, name: name, studentId: studentId,
-                        regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: ""
-                    };
-                    await setDoc(doc(db, "students", newId.toString()), newStudent);
-                    count++;
-                }
-                alert(`成功匯入 ${count} 筆資料！`);
-                setImportText(''); setShowImportModal(false);
-            };
-
-            // 🔹 刪除
-            const deleteStudent = async (id) => {
-                if (window.confirm('確定要刪除這位學生嗎？')) {
-                    await deleteDoc(doc(db, "students", id.toString()));
-                }
-            };
-
-            // 🔹 初始化資料庫
-            const uploadInitialData = async () => {
-                if (!window.confirm("確定要初始化資料庫嗎？將寫入 17 位學生名單。")) return;
-                setIsLoading(true);
-                try {
-                    for (const student of initialData) {
-                        await setDoc(doc(db, "students", student.id.toString()), student);
-                    }
-                    alert("✅ 初始化完成！");
-                } catch (e) { alert("❌ 初始化失敗：" + e.message); }
-                setIsLoading(false);
-            };
-
-            // 🔹 清空
-            const clearAllData = async () => {
-                if (!window.confirm('確定要清空「所有」雲端資料嗎？')) return;
-                setIsLoading(true);
-                const batchPromises = students.map(s => deleteDoc(doc(db, "students", s.id.toString())));
-                await Promise.all(batchPromises);
-                setIsLoading(false);
-            };
-
-            const checkPass = (s) => {
-                const finals = s.final0102 || s.final0109;
-                const required = s.regular && s.midterm && s.oral && finals;
-                return required;
-            };
-
-            const stats = {
-                total: students.length,
-                passed: students.filter(checkPass).length,
-                pending: students.filter(s => !checkPass(s)).length
-            };
-
-            // 錯誤處理畫面
-            if (errorInfo) {
-                return (
-                    <div className="min-h-screen flex flex-col items-center justify-center text-red-600 gap-4 p-4 bg-red-50">
-                        <AlertCircle size={48} />
-                        <div className="text-xl font-bold">連線錯誤 (Connection Error)</div>
-                        <div className="bg-white p-6 rounded-lg shadow-md max-w-lg border border-red-200">
-                            <p className="font-bold mb-2 text-lg text-red-700">{errorInfo.title}</p>
-                            <p className="mb-4 text-stone-700 leading-relaxed">{errorInfo.desc}</p>
-                            {errorInfo.link && (
-                                <a 
-                                    href={errorInfo.link} 
-                                    target="_blank" 
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors shadow-sm font-bold"
+                {/* Header & Course Info */}
+                <header className="mb-6 bg-white p-6 rounded-2xl shadow-sm border border-stone-200">
+                    <div className="flex flex-col gap-4">
+                        <div className="border-b border-stone-100 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                            <div>
+                                <h1 className="text-2xl md:text-3xl font-bold text-teal-800 flex items-center gap-3">
+                                    <ClipboardCheck className="w-8 h-8 flex-shrink-0" />
+                                    <div>
+                                        <div>族語 3 課程追蹤系統 (雲端版)</div>
+                                        <div className="text-lg md:text-xl font-medium text-teal-600 mt-1">
+                                            Indigenous Language Class 3 Tracking System
+                                        </div>
+                                    </div>
+                                </h1>
+                                <div className="flex items-center gap-2 mt-2 ml-11">
+                                    <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full flex items-center gap-1 font-bold">
+                                        <Cloud size={12}/> Cloud Sync Active
+                                    </span>
+                                    {user && <span className="text-xs text-stone-400 font-mono">ID: {user.uid.slice(0,6)}...</span>}
+                                </div>
+                            </div>
+                            
+                            {/* 初始化按鈕 */}
+                            {students.length === 0 && (
+                                <button 
+                                    onClick={uploadInitialData}
+                                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-lg animate-pulse font-bold flex items-center gap-2"
                                 >
-                                    前往 Firebase 設定 <ExternalLink size={16} />
-                                </a>
+                                    <Upload size={20} /> 🚀 初始化/上傳 17 筆預設名單
+                                </button>
                             )}
                         </div>
-                    </div>
-                );
-            }
 
-            if (isLoading && students.length === 0) {
-                return <div className="min-h-screen flex items-center justify-center text-stone-500">載入雲端資料中... (Loading Cloud Data...)</div>;
-            }
-
-            return (
-                <div className="min-h-screen bg-stone-50 p-4 md:p-8 font-sans text-stone-800">
-                    <div className="max-w-7xl mx-auto relative">
-                        
-                        {/* Header & Course Info */}
-                        <header className="mb-6 bg-white p-6 rounded-2xl shadow-sm border border-stone-200">
-                            <div className="flex flex-col gap-4">
-                                <div className="border-b border-stone-100 pb-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                    <div>
-                                        <h1 className="text-2xl md:text-3xl font-bold text-teal-800 flex items-center gap-3">
-                                            <ClipboardCheck className="w-8 h-8 flex-shrink-0" />
-                                            <div>
-                                                <div>族語 3 課程追蹤系統 (雲端版)</div>
-                                                <div className="text-lg md:text-xl font-medium text-teal-600 mt-1">
-                                                    Indigenous Language Class 3 Tracking System
-                                                </div>
-                                            </div>
-                                        </h1>
-                                        <div className="flex items-center gap-2 mt-2 ml-11">
-                                            <span className="bg-green-100 text-green-700 text-xs px-2 py-1 rounded-full flex items-center gap-1 font-bold">
-                                                <Cloud size={12}/> Cloud Sync Active
-                                            </span>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* 初始化按鈕 */}
-                                    {students.length === 0 && (
-                                        <button 
-                                            onClick={uploadInitialData}
-                                            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow-lg animate-pulse font-bold flex items-center gap-2"
-                                        >
-                                            <Upload size={20} /> 🚀 初始化/上傳 17 筆預設名單
-                                        </button>
-                                    )}
+                        {/* Course Details Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-0 md:ml-11 text-sm md:text-base">
+                            <div className="flex items-center gap-2 text-stone-700">
+                                <User className="w-5 h-5 text-indigo-500" />
+                                <div>
+                                    <div className="text-xs text-stone-400">授課教師 Instructor</div>
+                                    <div className="font-bold">蘿拉麻吉 Sonay Rolla Moggi</div>
                                 </div>
-
-                                {/* Course Details Grid */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-0 md:ml-11 text-sm md:text-base">
-                                    <div className="flex items-center gap-2 text-stone-700">
-                                        <User className="w-5 h-5 text-indigo-500" />
-                                        <div>
-                                            <div className="text-xs text-stone-400">授課教師 Instructor</div>
-                                            <div className="font-bold">蘿拉麻吉 Sonay Rolla Moggi</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-stone-700">
-                                        <GraduationCap className="w-5 h-5 text-indigo-500" />
-                                        <div>
-                                            <div className="text-xs text-stone-400">班級 Class</div>
-                                            <div className="font-bold">幼教系 Dept. of ECE</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-stone-700">
-                                        <MapPin className="w-5 h-5 text-indigo-500" />
-                                        <div>
-                                            <div className="text-xs text-stone-400">地點 Location</div>
-                                            <div className="font-bold">A103 語文教室</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Notices */}
-                                <div className="mt-2 bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg ml-0 md:ml-11">
-                                    <div className="flex items-start gap-3">
-                                        <Info className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
-                                        <div className="text-sm md:text-base text-amber-900">
-                                            <div className="font-bold mb-1 text-lg">📢 補考與補交說明 / Make-up Exam Notice</div>
-                                            <p className="mb-2">
-                                                允許學生補交報告及口說測驗(補考)並上傳錄音檔。
-                                            </p>
-                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-bold text-amber-800 bg-amber-100/50 p-2 rounded-lg">
-                                                <span className="flex items-center gap-1"><Calendar size={16}/> 01/09 期末 Final</span>
-                                                <span className="flex items-center gap-1"><Clock size={16}/> 14:10 開始 Start</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Reference Examples */}
-                                <div className="mt-4 pt-3 border-t border-indigo-200">
-                                    <div className="font-bold text-indigo-800 mb-3 flex items-center gap-2">
-                                        <Info size={16} /> 焦點系統參考範例 (Focus System Examples)
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
-                                            <div className="font-bold text-indigo-700 mb-1">阿美語 (Amis) - 環綴</div>
-                                            <div className="flex flex-wrap gap-2">
-                                                <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767762146/%E9%98%BF%E7%BE%8E%E8%AA%9E%E4%B8%BB%E7%84%A6%E7%92%B0%E7%B6%B4%E4%BE%8B_ymulgj.jpg" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖 1</a>
-                                                <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767762158/%E8%8B%B1%E6%96%87%E7%89%88_%E9%98%BF%E7%BE%8E%E8%AA%9E%E4%B8%BB%E7%84%A6%E7%92%B0%E7%B6%B4%E4%BE%8B_tsts15.jpg" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖 2</a>
-                                            </div>
-                                        </div>
-                                        <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
-                                            <div className="font-bold text-indigo-700 mb-1">東排灣語 - 中綴</div>
-                                            <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767760755/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_115655_g0zgje.png" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖</a>
-                                        </div>
-                                        <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
-                                            <div className="font-bold text-indigo-700 mb-1">撒奇萊雅語 - 工具焦點</div>
-                                            <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767763646/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_132613_s88rlt.png" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖</a>
-                                        </div>
-                                        <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
-                                            <div className="font-bold text-indigo-700 mb-1">布農族郡群 - 主事焦點</div>
-                                            <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767773306/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_160659_vmyfug.png" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖</a>
-                                        </div>
-                                        <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
-                                            <div className="font-bold text-indigo-700 mb-1">太魯閣語 - 前綴</div>
-                                            <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767758597/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_120039_zjhpcn.png" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖</a>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                {/* Statistics */}
-                                <div className="flex flex-wrap gap-3 mt-4 justify-end">
-                                    <div className="bg-blue-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
-                                        <div className="text-xs text-blue-600 font-bold uppercase">Total</div>
-                                        <div className="text-xl font-bold text-blue-800">{stats.total}</div>
-                                    </div>
-                                    <div className="bg-green-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
-                                        <div className="text-xs text-green-600 font-bold uppercase">Passed</div>
-                                        <div className="text-xl font-bold text-green-800">{stats.passed}</div>
-                                    </div>
-                                    <div className="bg-orange-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
-                                        <div className="text-xs text-orange-600 font-bold uppercase">Pending</div>
-                                        <div className="text-xl font-bold text-orange-800">{stats.pending}</div>
-                                    </div>
-                                </div>
-
                             </div>
-                        </header>
-
-                        {/* Main Table */}
-                        <div className="bg-white rounded-2xl shadow-lg border border-stone-200 overflow-hidden">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="bg-teal-700 text-white text-sm md:text-base">
-                                            <th className="p-3 md:p-4 font-semibold w-12 text-center">#</th>
-                                            <th className="p-3 md:p-4 font-semibold min-w-[140px]">
-                                                <div>姓名 / 學號</div>
-                                                <div className="text-xs text-teal-200 font-normal">Name / ID</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px]">
-                                                <div>平時</div>
-                                                <div className="text-xs text-teal-200 font-normal">Regular</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px]">
-                                                <div>期中</div>
-                                                <div className="text-xs text-teal-200 font-normal">Midterm</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-teal-800">
-                                                <div>期末 I</div>
-                                                <div className="text-xs text-teal-200 font-normal">Final I</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-teal-800 border-l border-teal-700">
-                                                <div>期末 II</div>
-                                                <div className="text-xs text-teal-200 font-normal">Final II</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-indigo-700">
-                                                <div>口說</div>
-                                                <div className="text-xs text-indigo-200 font-normal">Oral</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-amber-600">
-                                                <div>需修正</div>
-                                                <div className="text-xs text-amber-100 font-normal">Revise</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[100px]">
-                                                <div>狀態</div>
-                                                <div className="text-xs text-teal-200 font-normal">Status</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold min-w-[160px]">
-                                                <div>備註</div>
-                                                <div className="text-xs text-teal-200 font-normal">Note</div>
-                                            </th>
-                                            <th className="p-3 md:p-4 font-semibold w-16 text-center">
-                                                <div>操作</div>
-                                                <div className="text-xs text-teal-200 font-normal">Action</div>
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="text-sm md:text-base">
-                                        {students.map((student, index) => {
-                                            const isPassed = checkPass(student);
-                                            return (
-                                                <tr 
-                                                    key={student.id} 
-                                                    className={`border-b border-stone-100 hover:bg-stone-50 transition-colors ${isPassed ? 'bg-green-50/30' : ''}`}
-                                                >
-                                                    <td className="p-3 md:p-4 text-center text-stone-500">{index + 1}</td>
-                                                    <td className="p-3 md:p-4">
-                                                        <div className="font-bold text-stone-800">{student.name}</div>
-                                                        <div className="text-sm text-stone-500 font-mono">{student.studentId}</div>
-                                                    </td>
-                                                    {['regular', 'midterm', 'final0102', 'final0109', 'oral'].map((field) => (
-                                                        <td key={field} className="p-3 md:p-4 text-center">
-                                                            <button
-                                                                onClick={() => toggleStatus(student.id, field)}
-                                                                className={`p-2 rounded-full transition-all duration-200 ${
-                                                                    student[field] 
-                                                                        ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                                                                        : 'bg-stone-100 text-stone-300 hover:bg-stone-200'
-                                                                }`}
-                                                            >
-                                                                {student[field] ? <CheckCircle size={24} /> : <XCircle size={24} />}
-                                                            </button>
-                                                        </td>
-                                                    ))}
-                                                    <td className="p-3 md:p-4 text-center">
-                                                        <button
-                                                            onClick={() => toggleStatus(student.id, 'needsRevision')}
-                                                            className={`p-2 rounded-full transition-all duration-200 relative group ${
-                                                                student.needsRevision 
-                                                                    ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
-                                                                    : 'bg-stone-100 text-stone-300 hover:bg-stone-200'
-                                                            }`}
-                                                        >
-                                                            <RotateCcw size={24} />
-                                                        </button>
-                                                    </td>
-                                                    <td className="p-3 md:p-4 text-center">
-                                                        <span className={`inline-flex flex-col items-center px-3 py-1 rounded-lg text-xs font-bold border ${
-                                                            isPassed 
-                                                                ? 'bg-green-100 text-green-700 border-green-200' 
-                                                                : 'bg-red-50 text-red-600 border-red-100'
-                                                        }`}>
-                                                            <span>{isPassed ? '通過' : '未通過'}</span>
-                                                            <span className="text-[10px] opacity-80 uppercase">{isPassed ? 'PASS' : 'FAIL'}</span>
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-3 md:p-4">
-                                                        <input
-                                                            type="text"
-                                                            defaultValue={student.note}
-                                                            onBlur={(e) => handleNoteBlur(student.id, e.target.value)}
-                                                            placeholder="Ex: 補考順序 1"
-                                                            className="w-full bg-transparent border-b border-stone-200 focus:border-teal-500 focus:outline-none text-sm py-1 placeholder:text-stone-300"
-                                                        />
-                                                    </td>
-                                                    <td className="p-3 md:p-4 text-center">
-                                                        <button 
-                                                            onClick={() => deleteStudent(student.id)}
-                                                            className="text-stone-400 hover:text-red-500 transition-colors"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                                {students.length === 0 && (
-                                    <div className="p-12 text-center text-stone-400">
-                                        <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                                        <p>No data. (暫無資料，請點擊上方的初始化按鈕)</p>
-                                    </div>
-                                )}
+                            <div className="flex items-center gap-2 text-stone-700">
+                                <GraduationCap className="w-5 h-5 text-indigo-500" />
+                                <div>
+                                    <div className="text-xs text-stone-400">班級 Class</div>
+                                    <div className="font-bold">幼教系 Dept. of ECE</div>
+                                </div>
                             </div>
-
-                            {/* Footer Controls */}
-                            <div className="bg-stone-50 p-6 border-t border-stone-200 flex flex-col xl:flex-row justify-between items-center gap-6">
-                                <form onSubmit={addStudent} className="flex gap-3 w-full xl:w-auto">
-                                    <input type="text" placeholder="姓名 Name" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="px-4 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm flex-1 xl:flex-none w-32 md:w-auto" />
-                                    <input type="text" placeholder="學號 ID" value={newStudentId} onChange={(e) => setNewStudentId(e.target.value)} className="px-4 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm flex-1 xl:flex-none w-32 md:w-auto" />
-                                    <button type="submit" disabled={!newStudentName} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm disabled:opacity-50"><Plus size={18} /> 新增 Add</button>
-                                </form>
-                                <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
-                                    <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm shadow-sm"><Upload size={16} /> 批量匯入</button>
-                                    <div className="h-8 w-px bg-stone-300 mx-1 md:mx-2 hidden md:block"></div>
-                                    <button onClick={clearAllData} className="flex items-center gap-2 px-3 md:px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"><Eraser size={16} /> 清空</button>
+                            <div className="flex items-center gap-2 text-stone-700">
+                                <MapPin className="w-5 h-5 text-indigo-500" />
+                                <div>
+                                    <div className="text-xs text-stone-400">地點 Location</div>
+                                    <div className="font-bold">A103 語文教室</div>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Import Modal */}
-                        {showImportModal && (
-                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                                <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
-                                    <div className="p-6 border-b border-stone-200 flex justify-between items-center">
-                                        <h3 className="text-xl font-bold text-stone-800 flex items-center gap-2"><Upload size={20} /> 批量匯入名單</h3>
-                                        <button onClick={() => setShowImportModal(false)} className="text-stone-400 hover:text-stone-600"><X size={24} /></button>
-                                    </div>
-                                    <div className="p-6">
-                                        <p className="text-sm text-stone-500 mb-3">每行一位學生。格式：「姓名」或「姓名 學號」。</p>
-                                        <textarea className="w-full h-64 p-4 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" placeholder={`Example:\n王大明 A11001\nJohn Doe A11002`} value={importText} onChange={(e) => setImportText(e.target.value)}></textarea>
-                                    </div>
-                                    <div className="p-6 border-t border-stone-200 bg-stone-50 flex justify-end gap-3">
-                                        <button onClick={() => setShowImportModal(false)} className="px-4 py-2 text-stone-600 hover:bg-stone-200 rounded-lg font-medium">Cancel</button>
-                                        <button onClick={handleBulkImport} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm">Import</button>
+                        {/* Notices */}
+                        <div className="mt-2 bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg ml-0 md:ml-11">
+                            <div className="flex items-start gap-3">
+                                <Info className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
+                                <div className="text-sm md:text-base text-amber-900">
+                                    <div className="font-bold mb-1 text-lg">📢 補考與補交說明 / Make-up Exam Notice</div>
+                                    <p className="mb-2">
+                                        允許學生補交報告及口說測驗(補考)並上傳錄音檔。
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-bold text-amber-800 bg-amber-100/50 p-2 rounded-lg">
+                                        <span className="flex items-center gap-1"><Calendar size={16}/> 01/09 期末 Final</span>
+                                        <span className="flex items-center gap-1"><Clock size={16}/> 14:10 開始 Start</span>
                                     </div>
                                 </div>
                             </div>
-                        )}
+                        </div>
 
-                        <div className="mt-6 text-center text-stone-400 text-sm">
-                            <p>族語 3 課程管理系統 | Indigenous Language Class Tracker</p>
+                        {/* Reference Examples */}
+                        <div className="mt-4 pt-3 border-t border-indigo-200">
+                            <div className="font-bold text-indigo-800 mb-3 flex items-center gap-2">
+                                <Info size={16} /> 焦點系統參考範例 (Focus System Examples)
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                    <div className="font-bold text-indigo-700 mb-1">阿美語 (Amis) - 環綴</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767762146/%E9%98%BF%E7%BE%8E%E8%AA%9E%E4%B8%BB%E7%84%A6%E7%92%B0%E7%B6%B4%E4%BE%8B_ymulgj.jpg" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖 1</a>
+                                        <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767762158/%E8%8B%B1%E6%96%87%E7%89%88_%E9%98%BF%E7%BE%8E%E8%AA%9E%E4%B8%BB%E7%84%A6%E7%92%B0%E7%B6%B4%E4%BE%8B_tsts15.jpg" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖 2</a>
+                                    </div>
+                                </div>
+                                <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                    <div className="font-bold text-indigo-700 mb-1">東排灣語 - 中綴</div>
+                                    <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767760755/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_115655_g0zgje.png" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖</a>
+                                </div>
+                                <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                    <div className="font-bold text-indigo-700 mb-1">撒奇萊雅語 - 工具焦點</div>
+                                    <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767763646/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_132613_s88rlt.png" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖</a>
+                                </div>
+                                <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                    <div className="font-bold text-indigo-700 mb-1">布農族郡群 - 主事焦點</div>
+                                    <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767773306/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_160659_vmyfug.png" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖</a>
+                                </div>
+                                <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                    <div className="font-bold text-indigo-700 mb-1">太魯閣語 - 前綴</div>
+                                    <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767758597/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_120039_zjhpcn.png" target="_blank" className="text-blue-600 text-xs flex items-center gap-1 hover:underline bg-white px-2 py-1 rounded border border-indigo-100"><Image size={14}/> 範例圖</a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Statistics */}
+                        <div className="flex flex-wrap gap-3 mt-4 justify-end">
+                            <div className="bg-blue-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
+                                <div className="text-xs text-blue-600 font-bold uppercase">Total</div>
+                                <div className="text-xl font-bold text-blue-800">{stats.total}</div>
+                            </div>
+                            <div className="bg-green-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
+                                <div className="text-xs text-green-600 font-bold uppercase">Passed</div>
+                                <div className="text-xl font-bold text-green-800">{stats.passed}</div>
+                            </div>
+                            <div className="bg-orange-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
+                                <div className="text-xs text-orange-600 font-bold uppercase">Pending</div>
+                                <div className="text-xl font-bold text-orange-800">{stats.pending}</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </header>
+
+                {/* Main Table */}
+                <div className="bg-white rounded-2xl shadow-lg border border-stone-200 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-teal-700 text-white text-sm md:text-base">
+                                    <th className="p-3 md:p-4 font-semibold w-12 text-center">#</th>
+                                    <th className="p-3 md:p-4 font-semibold min-w-[140px]">
+                                        <div>姓名 / 學號</div>
+                                        <div className="text-xs text-teal-200 font-normal">Name / ID</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold text-center min-w-[90px]">
+                                        <div>平時</div>
+                                        <div className="text-xs text-teal-200 font-normal">Regular</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold text-center min-w-[90px]">
+                                        <div>期中</div>
+                                        <div className="text-xs text-teal-200 font-normal">Midterm</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-teal-800">
+                                        <div>期末 I</div>
+                                        <div className="text-xs text-teal-200 font-normal">Final I</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-teal-800 border-l border-teal-700">
+                                        <div>期末 II</div>
+                                        <div className="text-xs text-teal-200 font-normal">Final II</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-indigo-700">
+                                        <div>口說</div>
+                                        <div className="text-xs text-indigo-200 font-normal">Oral</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-amber-600">
+                                        <div>需修正</div>
+                                        <div className="text-xs text-amber-100 font-normal">Revise</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold text-center min-w-[100px]">
+                                        <div>狀態</div>
+                                        <div className="text-xs text-teal-200 font-normal">Status</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold min-w-[160px]">
+                                        <div>備註</div>
+                                        <div className="text-xs text-teal-200 font-normal">Note</div>
+                                    </th>
+                                    <th className="p-3 md:p-4 font-semibold w-16 text-center">
+                                        <div>操作</div>
+                                        <div className="text-xs text-teal-200 font-normal">Action</div>
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="text-sm md:text-base">
+                                {students.map((student, index) => {
+                                    const isPassed = checkPass(student);
+                                    return (
+                                        <tr 
+                                            key={student.id} 
+                                            className={`border-b border-stone-100 hover:bg-stone-50 transition-colors ${isPassed ? 'bg-green-50/30' : ''}`}
+                                        >
+                                            <td className="p-3 md:p-4 text-center text-stone-500">{index + 1}</td>
+                                            <td className="p-3 md:p-4">
+                                                <div className="font-bold text-stone-800">{student.name}</div>
+                                                <div className="text-sm text-stone-500 font-mono">{student.studentId}</div>
+                                            </td>
+                                            {['regular', 'midterm', 'final0102', 'final0109', 'oral'].map((field) => (
+                                                <td key={field} className="p-3 md:p-4 text-center">
+                                                    <button
+                                                        onClick={() => toggleStatus(student.id, field)}
+                                                        className={`p-2 rounded-full transition-all duration-200 ${
+                                                            student[field] 
+                                                                ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                                                                : 'bg-stone-100 text-stone-300 hover:bg-stone-200'
+                                                        }`}
+                                                    >
+                                                        {student[field] ? <CheckCircle size={24} /> : <XCircle size={24} />}
+                                                    </button>
+                                                </td>
+                                            ))}
+                                            <td className="p-3 md:p-4 text-center">
+                                                <button
+                                                    onClick={() => toggleStatus(student.id, 'needsRevision')}
+                                                    className={`p-2 rounded-full transition-all duration-200 relative group ${
+                                                        student.needsRevision 
+                                                            ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
+                                                            : 'bg-stone-100 text-stone-300 hover:bg-stone-200'
+                                                    }`}
+                                                >
+                                                    <RotateCcw size={24} />
+                                                </button>
+                                            </td>
+                                            <td className="p-3 md:p-4 text-center">
+                                                <span className={`inline-flex flex-col items-center px-3 py-1 rounded-lg text-xs font-bold border ${
+                                                    isPassed 
+                                                        ? 'bg-green-100 text-green-700 border-green-200' 
+                                                        : 'bg-red-50 text-red-600 border-red-100'
+                                                }`}>
+                                                    <span>{isPassed ? '通過' : '未通過'}</span>
+                                                    <span className="text-[10px] opacity-80 uppercase">{isPassed ? 'PASS' : 'FAIL'}</span>
+                                                </span>
+                                            </td>
+                                            <td className="p-3 md:p-4">
+                                                <input
+                                                    type="text"
+                                                    defaultValue={student.note}
+                                                    onBlur={(e) => handleNoteBlur(student.id, e.target.value)}
+                                                    placeholder="Ex: 補考順序 1"
+                                                    className="w-full bg-transparent border-b border-stone-200 focus:border-teal-500 focus:outline-none text-sm py-1 placeholder:text-stone-300"
+                                                />
+                                            </td>
+                                            <td className="p-3 md:p-4 text-center">
+                                                <button 
+                                                    onClick={() => deleteStudent(student.id)}
+                                                    className="text-stone-400 hover:text-red-500 transition-colors"
+                                                >
+                                                    <Trash2 size={18} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                        {students.length === 0 && !isLoading && (
+                            <div className="p-12 text-center text-stone-400">
+                                <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                <p>No data. (暫無資料，請點擊上方的初始化按鈕)</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer Controls */}
+                    <div className="bg-stone-50 p-6 border-t border-stone-200 flex flex-col xl:flex-row justify-between items-center gap-6">
+                        <form onSubmit={addStudent} className="flex gap-3 w-full xl:w-auto">
+                            <input type="text" placeholder="姓名 Name" value={newStudentName} onChange={(e) => setNewStudentName(e.target.value)} className="px-4 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm flex-1 xl:flex-none w-32 md:w-auto" />
+                            <input type="text" placeholder="學號 ID" value={newStudentId} onChange={(e) => setNewStudentId(e.target.value)} className="px-4 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm flex-1 xl:flex-none w-32 md:w-auto" />
+                            <button type="submit" disabled={!newStudentName} className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm disabled:opacity-50"><Plus size={18} /> 新增 Add</button>
+                        </form>
+                        <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
+                            <button onClick={() => setShowImportModal(true)} className="flex items-center gap-2 px-3 md:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm shadow-sm"><Upload size={16} /> 批量匯入</button>
+                            <div className="h-8 w-px bg-stone-300 mx-1 md:mx-2 hidden md:block"></div>
+                            <button onClick={clearAllData} className="flex items-center gap-2 px-3 md:px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"><Eraser size={16} /> 清空</button>
                         </div>
                     </div>
                 </div>
-            );
-        };
 
-        const root = createRoot(document.getElementById('root'));
-        root.render(<IndigenousLanguageTracker />);
-    </script>
-</body>
-</html>
+                {/* Import Modal */}
+                {showImportModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                        <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+                            <div className="p-6 border-b border-stone-200 flex justify-between items-center">
+                                <h3 className="text-xl font-bold text-stone-800 flex items-center gap-2"><Upload size={20} /> 批量匯入名單</h3>
+                                <button onClick={() => setShowImportModal(false)} className="text-stone-400 hover:text-stone-600"><X size={24} /></button>
+                            </div>
+                            <div className="p-6">
+                                <p className="text-sm text-stone-500 mb-3">每行一位學生。格式：「姓名」或「姓名 學號」。</p>
+                                <textarea className="w-full h-64 p-4 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm" placeholder={`Example:\n王大明 A11001\nJohn Doe A11002`} value={importText} onChange={(e) => setImportText(e.target.value)}></textarea>
+                            </div>
+                            <div className="p-6 border-t border-stone-200 bg-stone-50 flex justify-end gap-3">
+                                <button onClick={() => setShowImportModal(false)} className="px-4 py-2 text-stone-600 hover:bg-stone-200 rounded-lg font-medium">Cancel</button>
+                                <button onClick={handleBulkImport} className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm">Import</button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                <div className="mt-6 text-center text-stone-400 text-sm">
+                    <p>族語 3 課程管理系統 | Indigenous Language Class Tracker</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default IndigenousLanguageTracker;

@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>族語 3 課程追蹤系統</title>
+    
+    <!-- 1. 引入 Tailwind CSS (樣式) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. 引入 React 和 Babel (讓瀏覽器看得懂 React) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 3. 設定 Import Map (讓 import 指令可以運作) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "react": "https://esm.sh/react@18.2.0",
+            "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+            "lucide-react": "https://esm.sh/lucide-react@0.263.1"
+        }
+    }
+    </script>
+</head>
+<body class="bg-stone-50">
+    <!-- 這裡是 React 程式掛載的點 -->
+    <div id="root"></div>
+
+    <!-- 4. 主要程式碼 -->
+    <script type="text/babel" data-type="module">
+        import React, { useState, useEffect } from 'react';
+        import { createRoot } from 'react-dom/client';
+        import { 
+            Plus, Trash2, RotateCcw, CheckCircle, XCircle, Users, 
+            ClipboardCheck, Upload, X, Eraser, Code, Copy, Info, 
+            MapPin, User, GraduationCap, Calendar, Clock, AlertCircle, 
+            FileText, Image, ExternalLink 
+        } from 'lucide-react';
+
+        const IndigenousLanguageTracker = () => {
+            // ==========================================
+            // 📢 老師請注意 / Teacher's Note:
+            // 若要更新 GitHub Pages 上的資料，請先在網頁上操作完畢，
+            // 點擊下方的「匯出程式碼資料」按鈕，複製生成的內容，
+            // 然後回來這裡，「覆蓋」掉下方的 initialData 內容。
+            // ==========================================
+            const initialData = [
+                { id: 1, name: "史翎", studentId: "11106210", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 2, name: "王妤君", studentId: "11206201", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 3, name: "廖于寰", studentId: "11206202", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 4, name: "胡弘易", studentId: "11206203", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 5, name: "呂頌恩", studentId: "11206210", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 6, name: "楊舒閑", studentId: "11206212", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 7, name: "董韋誠", studentId: "11206214", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 8, name: "蘇邱立宏", studentId: "11206215", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 9, name: "林子嫈", studentId: "11206217", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 10, name: "林芳宇", studentId: "11206221", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 11, name: "林詩晨", studentId: "11206222", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 12, name: "魏翔慧", studentId: "11206224", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 13, name: "黃湘茹", studentId: "11206225", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 14, name: "余晨儀", studentId: "11206226", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 15, name: "葛雯", studentId: "11206227", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 16, name: "林子嫣", studentId: "11206230", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
+                { id: 17, name: "Malinda", studentId: "", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "南島文化研究碩士班" },
+            ];
+
+            const STORAGE_KEY = 'indigenous_class_data_v3';
+
+            const [students, setStudents] = useState(() => {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                return saved ? JSON.parse(saved) : initialData;
+            });
+
+            const [newStudentName, setNewStudentName] = useState('');
+            const [newStudentId, setNewStudentId] = useState('');
+            const [showImportModal, setShowImportModal] = useState(false);
+            const [showExportCodeModal, setShowExportCodeModal] = useState(false);
+            const [importText, setImportText] = useState('');
+            const [exportCodeText, setExportCodeText] = useState('');
+
+            useEffect(() => {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(students));
+            }, [students]);
+
+            const toggleStatus = (id, field) => {
+                setStudents(students.map(student => 
+                    student.id === id ? { ...student, [field]: !student[field] } : student
+                ));
+            };
+
+            const updateNote = (id, note) => {
+                setStudents(students.map(student => 
+                    student.id === id ? { ...student, note } : student
+                ));
+            };
+
+            const addStudent = (e) => {
+                e.preventDefault();
+                if (!newStudentName.trim()) return;
+                
+                const newStudent = {
+                    id: Date.now(),
+                    name: newStudentName,
+                    studentId: newStudentId,
+                    regular: false,
+                    midterm: false,
+                    final0102: false,
+                    final0109: false,
+                    oral: false,
+                    needsRevision: false,
+                    note: ""
+                };
+                
+                setStudents([...students, newStudent]);
+                setNewStudentName('');
+                setNewStudentId('');
+            };
+
+            const handleBulkImport = () => {
+                if (!importText.trim()) return;
+                const lines = importText.trim().split('\n');
+                const newStudents = lines.map((line, index) => {
+                    const parts = line.trim().split(/[\s,，\t]+/);
+                    const name = parts[0];
+                    const studentId = parts.length > 1 ? parts[1] : '';
+                    if (!name) return null;
+                    return {
+                        id: Date.now() + index,
+                        name: name,
+                        studentId: studentId,
+                        regular: false,
+                        midterm: false,
+                        final0102: false,
+                        final0109: false,
+                        oral: false,
+                        needsRevision: false,
+                        note: ""
+                    };
+                }).filter(item => item !== null);
+                setStudents([...students, ...newStudents]);
+                setImportText('');
+                setShowImportModal(false);
+            };
+
+            const generateCodeExport = () => {
+                const jsonString = JSON.stringify(students, null, 2);
+                const codeString = `const initialData = ${jsonString};`;
+                setExportCodeText(codeString);
+                setShowExportCodeModal(true);
+            };
+
+            const copyToClipboard = () => {
+                navigator.clipboard.writeText(exportCodeText);
+                alert('Copied! Please paste it back to your source code. (已複製！請回到程式碼貼上覆蓋)');
+            };
+
+            const deleteStudent = (id) => {
+                if (window.confirm('Are you sure you want to delete this student? (確定刪除？)')) {
+                    setStudents(students.filter(s => s.id !== id));
+                }
+            };
+
+            const clearAllData = () => {
+                if (window.confirm('Delete ALL data? (確定清空所有資料？此動作無法復原)')) {
+                    setStudents([]);
+                }
+            };
+
+            const resetData = () => {
+                if (window.confirm('Reset to initial data? (確定重置回原始名單？目前的修改將消失)')) {
+                    setStudents(initialData);
+                }
+            };
+
+            const checkPass = (s) => {
+                const finals = s.final0102 || s.final0109;
+                const required = s.regular && s.midterm && s.oral && finals;
+                return required;
+            };
+
+            const stats = {
+                total: students.length,
+                passed: students.filter(checkPass).length,
+                pending: students.filter(s => !checkPass(s)).length
+            };
+
+            return (
+                <div className="min-h-screen bg-stone-50 p-4 md:p-8 font-sans text-stone-800">
+                    <div className="max-w-7xl mx-auto relative">
+                        
+                        {/* Header & Course Info */}
+                        <header className="mb-6 bg-white p-6 rounded-2xl shadow-sm border border-stone-200">
+                            <div className="flex flex-col gap-4">
+                                
+                                {/* Main Title */}
+                                <div className="border-b border-stone-100 pb-4">
+                                    <h1 className="text-2xl md:text-3xl font-bold text-teal-800 flex items-center gap-3">
+                                        <ClipboardCheck className="w-8 h-8 flex-shrink-0" />
+                                        <div>
+                                            <div>族語 3 平時作業、期中報告、期末報告、口說測驗</div>
+                                            <div className="text-lg md:text-xl font-medium text-teal-600 mt-1">
+                                                Indigenous Language Class 3: Assignments, Midterm, Final & Oral Test
+                                            </div>
+                                        </div>
+                                    </h1>
+                                    <p className="text-stone-500 mt-2 font-medium ml-11">
+                                        期末報告 & 口說測驗 Final Presentation & Oral Test
+                                    </p>
+                                </div>
+
+                                {/* Course Details Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 ml-0 md:ml-11 text-sm md:text-base">
+                                    <div className="flex items-center gap-2 text-stone-700">
+                                        <User className="w-5 h-5 text-indigo-500" />
+                                        <div>
+                                            <div className="text-xs text-stone-400">授課教師 Instructor</div>
+                                            <div className="font-bold">蘿拉麻吉 Sonay Rolla Moggi</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-stone-700">
+                                        <GraduationCap className="w-5 h-5 text-indigo-500" />
+                                        <div>
+                                            <div className="text-xs text-stone-400">班級 Class</div>
+                                            <div className="font-bold">幼教系 Dept. of ECE</div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 text-stone-700">
+                                        <MapPin className="w-5 h-5 text-indigo-500" />
+                                        <div>
+                                            <div className="text-xs text-stone-400">地點 Location</div>
+                                            <div className="font-bold">A103 語文教室</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Make-up Exam Notice */}
+                                <div className="mt-2 bg-amber-50 border-l-4 border-amber-400 p-4 rounded-r-lg ml-0 md:ml-11">
+                                    <div className="flex items-start gap-3">
+                                        <Info className="w-6 h-6 text-amber-600 flex-shrink-0 mt-1" />
+                                        <div className="text-sm md:text-base text-amber-900">
+                                            <div className="font-bold mb-1 text-lg">📢 補考與補交說明 / Make-up Exam Notice</div>
+                                            <p className="mb-2">
+                                                允許學生補交報告及口說測驗(補考)並上傳錄音檔。
+                                                <br/>
+                                                Students are allowed to submit make-up reports and oral test recordings.
+                                            </p>
+                                            
+                                            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-bold text-amber-800 bg-amber-100/50 p-2 rounded-lg">
+                                                <span className="flex items-center gap-1"><Calendar size={16}/> 01/09 期末 Final</span>
+                                                <span className="flex items-center gap-1"><Clock size={16}/> 14:10 開始 Start</span>
+                                            </div>
+                                            <p className="mt-2 text-amber-800 font-medium">
+                                                ⚠️ 補報告及口說時間及順序順延至最後一位同學，請同學登記補考順序。
+                                                <br />
+                                                <span className="text-amber-700/80 font-normal">
+                                                    Make-up sessions will follow the last scheduled student. Please sign up for the make-up order.
+                                                </span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Final Report Guidelines */}
+                                <div className="mt-2 bg-indigo-50 border-l-4 border-indigo-400 p-4 rounded-r-lg ml-0 md:ml-11">
+                                    <div className="flex items-start gap-3">
+                                        <FileText className="w-6 h-6 text-indigo-600 flex-shrink-0 mt-1" />
+                                        <div className="text-sm md:text-base text-indigo-900 w-full">
+                                            <div className="font-bold mb-2 text-lg">📝 期末報告規範 / Final Report Guidelines</div>
+                                            <div className="font-bold text-indigo-800 mb-1">主題：焦點系統說明 (Topic: Focus System)</div>
+                                            <ul className="list-none space-y-1 ml-1 text-indigo-800 font-medium">
+                                                <li>1. 主事焦點 (Agent Focus)</li>
+                                                <li>2. 受事焦點 (Patient Focus)
+                                                    <span className="text-indigo-600 text-sm ml-2">(2-1 命令句, 2-2 祈始句)</span>
+                                                </li>
+                                                <li>3. 工具焦點 / 受惠焦點 (Instrument / Beneficiary Focus)</li>
+                                                <li>4. 處所焦點 (Location Focus)</li>
+                                            </ul>
+                                            <div className="mt-3 font-bold border-t border-indigo-200 pt-2 text-indigo-800">
+                                                📌 自選 5 個主題，每個主題並給岀 5 句說明。
+                                                <br/>
+                                                <span className="font-normal text-sm opacity-80">Select 5 topics and provide 5 sentences for each.</span>
+                                            </div>
+
+                                            {/* Reference Examples */}
+                                            <div className="mt-4 pt-3 border-t border-indigo-200">
+                                                <div className="font-bold text-indigo-800 mb-3 flex items-center gap-2">
+                                                    <Info size={16} /> 焦點系統參考範例 (Focus System Examples)
+                                                </div>
+                                                
+                                                {/* Amis */}
+                                                <div className="mb-3 bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                                    <div className="font-bold text-indigo-700 mb-1">阿美語 (Amis) - 環綴 (Circumfix)</div>
+                                                    <div className="text-sm font-mono bg-indigo-100 px-2 py-0.5 rounded inline-block text-indigo-900 mb-2">Mi-pa-'aca-ay</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767762146/%E9%98%BF%E7%BE%8E%E8%AA%9E%E4%B8%BB%E7%84%A6%E7%92%B0%E7%B6%B4%E4%BE%8B_ymulgj.jpg" target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 bg-white border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 text-blue-600 transition-colors">
+                                                            <Image size={14}/> 範例圖 1 (Example 1) <ExternalLink size={10}/>
+                                                        </a>
+                                                        <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767762158/%E8%8B%B1%E6%96%87%E7%89%88_%E9%98%BF%E7%BE%8E%E8%AA%9E%E4%B8%BB%E7%84%A6%E7%92%B0%E7%B6%B4%E4%BE%8B_tsts15.jpg" target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 bg-white border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 text-blue-600 transition-colors">
+                                                            <Image size={14}/> 範例圖 2 (Example 2) <ExternalLink size={10}/>
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                {/* Paiwan */}
+                                                <div className="mb-3 bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                                    <div className="font-bold text-indigo-700 mb-1">東排灣語 (Eastern Paiwan) - 中綴 (Infix)</div>
+                                                    <div className="flex gap-2">
+                                                        <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767760755/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_115655_g0zgje.png" target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 bg-white border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 text-blue-600 transition-colors">
+                                                            <Image size={14}/> 範例圖 (Example) <ExternalLink size={10}/>
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                {/* Sakizaya */}
+                                                <div className="mb-3 bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                                    <div className="font-bold text-indigo-700 mb-1">撒奇萊雅語 (Sakizaya) - 工具焦點 (Instrument Focus)</div>
+                                                    <div className="flex gap-2">
+                                                        <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767763646/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_132613_s88rlt.png" target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 bg-white border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 text-blue-600 transition-colors">
+                                                            <Image size={14}/> 範例圖 (Example) <ExternalLink size={10}/>
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                {/* Bunun */}
+                                                <div className="mb-3 bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                                    <div className="font-bold text-indigo-700 mb-1">布農族郡群 (Bunun Isbukun) - 主事焦點 (Agent Focus)</div>
+                                                    <div className="flex gap-2">
+                                                        <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767773306/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_160659_vmyfug.png" target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 bg-white border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 text-blue-600 transition-colors">
+                                                            <Image size={14}/> 範例圖 (Example) <ExternalLink size={10}/>
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                                {/* Truku */}
+                                                <div className="mb-1 bg-white/60 p-2 rounded-lg border border-indigo-100">
+                                                    <div className="font-bold text-indigo-700 mb-1">太魯閣語 (Truku) - 前綴 (Prefix)</div>
+                                                    <div className="flex gap-2">
+                                                        <a href="https://res.cloudinary.com/dm1ksvptk/image/upload/v1767758597/%E8%9E%A2%E5%B9%95%E6%93%B7%E5%8F%96%E7%95%AB%E9%9D%A2_2026-01-07_120039_zjhpcn.png" target="_blank" rel="noopener noreferrer" className="text-xs flex items-center gap-1 bg-white border border-indigo-200 px-2 py-1 rounded hover:bg-indigo-50 text-blue-600 transition-colors">
+                                                            <Image size={14}/> 範例圖 (Example) <ExternalLink size={10}/>
+                                                        </a>
+                                                    </div>
+                                                </div>
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Statistics */}
+                                <div className="flex flex-wrap gap-3 mt-2 justify-end">
+                                    <div className="bg-blue-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
+                                        <div className="text-xs text-blue-600 font-bold uppercase">Total</div>
+                                        <div className="text-xl font-bold text-blue-800">{stats.total}</div>
+                                    </div>
+                                    <div className="bg-green-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
+                                        <div className="text-xs text-green-600 font-bold uppercase">Passed</div>
+                                        <div className="text-xl font-bold text-green-800">{stats.passed}</div>
+                                    </div>
+                                    <div className="bg-orange-50 px-4 py-2 rounded-lg text-center flex-1 md:flex-none">
+                                        <div className="text-xs text-orange-600 font-bold uppercase">Pending</div>
+                                        <div className="text-xl font-bold text-orange-800">{stats.pending}</div>
+                                    </div>
+                                </div>
+
+                            </div>
+                        </header>
+
+                        {/* Main Table */}
+                        <div className="bg-white rounded-2xl shadow-lg border border-stone-200 overflow-hidden">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-teal-700 text-white text-sm md:text-base">
+                                            <th className="p-3 md:p-4 font-semibold w-12 text-center">#</th>
+                                            <th className="p-3 md:p-4 font-semibold min-w-[140px]">
+                                                <div>姓名 / 學號</div>
+                                                <div className="text-xs text-teal-200 font-normal">Name / ID</div>
+                                            </th>
+                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px]">
+                                                <div>平時</div>
+                                                <div className="text-xs text-teal-200 font-normal">Regular</div>
+                                            </th>
+                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px]">
+                                                <div>期中</div>
+                                                <div className="text-xs text-teal-200 font-normal">Midterm</div>
+                                                <div className="text-[10px] text-teal-200/80">12/19</div>
+                                            </th>
+                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-teal-800">
+                                                <div>期末 I</div>
+                                                <div className="text-xs text-teal-200 font-normal">Final I</div>
+                                                <div className="text-[10px] text-teal-200/80">01/02</div>
+                                            </th>
+                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-teal-800 border-l border-teal-700">
+                                                <div>期末 II</div>
+                                                <div className="text-xs text-teal-200 font-normal">Final II</div>
+                                                <div className="text-[10px] text-teal-200/80">01/09</div>
+                                            </th>
+                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-indigo-700">
+                                                <div>口說</div>
+                                                <div className="text-xs text-indigo-200 font-normal">Oral</div>
+                                            </th>
+                                            
+                                            {/* New Column: Needs Revision */}
+                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[90px] bg-amber-600">
+                                                <div>需修正</div>
+                                                <div className="text-xs text-amber-100 font-normal">Revise</div>
+                                            </th>
+
+                                            <th className="p-3 md:p-4 font-semibold text-center min-w-[100px]">
+                                                <div>狀態</div>
+                                                <div className="text-xs text-teal-200 font-normal">Status</div>
+                                            </th>
+                                            <th className="p-3 md:p-4 font-semibold min-w-[160px]">
+                                                <div>備註</div>
+                                                <div className="text-xs text-teal-200 font-normal">Note / Dept.</div>
+                                            </th>
+                                            <th className="p-3 md:p-4 font-semibold w-16 text-center">
+                                                <div>操作</div>
+                                                <div className="text-xs text-teal-200 font-normal">Action</div>
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="text-sm md:text-base">
+                                        {students.map((student, index) => {
+                                            const isPassed = checkPass(student);
+                                            return (
+                                                <tr 
+                                                    key={student.id} 
+                                                    className={`border-b border-stone-100 hover:bg-stone-50 transition-colors ${isPassed ? 'bg-green-50/30' : ''}`}
+                                                >
+                                                    <td className="p-3 md:p-4 text-center text-stone-500">{index + 1}</td>
+                                                    <td className="p-3 md:p-4">
+                                                        <div className="font-bold text-stone-800">{student.name}</div>
+                                                        <div className="text-sm text-stone-500 font-mono">{student.studentId}</div>
+                                                    </td>
+                                                    
+                                                    {/* Checkboxes */}
+                                                    {['regular', 'midterm', 'final0102', 'final0109', 'oral'].map((field) => (
+                                                        <td key={field} className="p-3 md:p-4 text-center">
+                                                            <button
+                                                                onClick={() => toggleStatus(student.id, field)}
+                                                                className={`p-2 rounded-full transition-all duration-200 ${
+                                                                    student[field] 
+                                                                        ? 'bg-green-100 text-green-600 hover:bg-green-200' 
+                                                                        : 'bg-stone-100 text-stone-300 hover:bg-stone-200'
+                                                                }`}
+                                                            >
+                                                                {student[field] ? <CheckCircle size={24} /> : <XCircle size={24} />}
+                                                            </button>
+                                                        </td>
+                                                    ))}
+
+                                                    {/* Needs Revision Toggle */}
+                                                    <td className="p-3 md:p-4 text-center">
+                                                        <button
+                                                            onClick={() => toggleStatus(student.id, 'needsRevision')}
+                                                            className={`p-2 rounded-full transition-all duration-200 relative group ${
+                                                                student.needsRevision 
+                                                                    ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' 
+                                                                    : 'bg-stone-100 text-stone-300 hover:bg-stone-200'
+                                                            }`}
+                                                            title="需修改報告後，重新上傳 (Needs revision and re-upload)"
+                                                        >
+                                                            <RotateCcw size={24} />
+                                                            {student.needsRevision && (
+                                                                <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-500"></span>
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    </td>
+
+                                                    {/* Status Badge */}
+                                                    <td className="p-3 md:p-4 text-center">
+                                                        <span className={`inline-flex flex-col items-center px-3 py-1 rounded-lg text-xs font-bold border ${
+                                                            isPassed 
+                                                                ? 'bg-green-100 text-green-700 border-green-200' 
+                                                                : 'bg-red-50 text-red-600 border-red-100'
+                                                        }`}>
+                                                            <span>{isPassed ? '通過' : '未通過'}</span>
+                                                            <span className="text-[10px] opacity-80 uppercase">{isPassed ? 'PASS' : 'FAIL'}</span>
+                                                        </span>
+                                                    </td>
+
+                                                    {/* Note Input */}
+                                                    <td className="p-3 md:p-4">
+                                                        <input
+                                                            type="text"
+                                                            value={student.note}
+                                                            onChange={(e) => updateNote(student.id, e.target.value)}
+                                                            placeholder="Ex: 補考順序 1 (Seq. 1)"
+                                                            className="w-full bg-transparent border-b border-stone-200 focus:border-teal-500 focus:outline-none text-sm py-1 placeholder:text-stone-300"
+                                                        />
+                                                    </td>
+
+                                                    {/* Actions */}
+                                                    <td className="p-3 md:p-4 text-center">
+                                                        <button 
+                                                            onClick={() => deleteStudent(student.id)}
+                                                            className="text-stone-400 hover:text-red-500 transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                                
+                                {students.length === 0 && (
+                                    <div className="p-12 text-center text-stone-400">
+                                        <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                        <p>No data. Please add students. (目前無資料，請新增學生)</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer Controls */}
+                            <div className="bg-stone-50 p-6 border-t border-stone-200 flex flex-col xl:flex-row justify-between items-center gap-6">
+                                
+                                {/* Add Student Form */}
+                                <form onSubmit={addStudent} className="flex gap-3 w-full xl:w-auto">
+                                    <input
+                                        type="text"
+                                        placeholder="姓名 Name"
+                                        value={newStudentName}
+                                        onChange={(e) => setNewStudentName(e.target.value)}
+                                        className="px-4 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm flex-1 xl:flex-none w-32 md:w-auto"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="學號 ID (Optional)"
+                                        value={newStudentId}
+                                        onChange={(e) => setNewStudentId(e.target.value)}
+                                        className="px-4 py-2 rounded-lg border border-stone-300 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm flex-1 xl:flex-none w-32 md:w-auto"
+                                    />
+                                    <button 
+                                        type="submit"
+                                        disabled={!newStudentName}
+                                        className="bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                                    >
+                                        <Plus size={18} /> <span className="hidden md:inline">新增 Add</span>
+                                    </button>
+                                </form>
+
+                                {/* System Tools */}
+                                <div className="flex flex-wrap gap-2 md:gap-3 justify-center">
+                                    <button 
+                                        onClick={generateCodeExport}
+                                        className="flex items-center gap-2 px-3 md:px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors text-sm shadow-sm border border-slate-700"
+                                        title="Export JSON for Source Code"
+                                    >
+                                        <Code size={16} /> <span className="hidden md:inline">匯出程式碼資料 Export</span>
+                                    </button>
+
+                                    <button 
+                                        onClick={() => setShowImportModal(true)}
+                                        className="flex items-center gap-2 px-3 md:px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-sm shadow-sm"
+                                    >
+                                        <Upload size={16} /> <span className="hidden md:inline">批量匯入 Import</span>
+                                    </button>
+
+                                    <div className="h-8 w-px bg-stone-300 mx-1 md:mx-2 hidden md:block"></div>
+
+                                    <button 
+                                        onClick={clearAllData}
+                                        className="flex items-center gap-2 px-3 md:px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                                    >
+                                        <Eraser size={16} /> <span className="hidden md:inline">清空 Clear</span>
+                                    </button>
+                                    
+                                    <button 
+                                        onClick={resetData}
+                                        className="flex items-center gap-2 px-3 md:px-4 py-2 text-stone-600 hover:bg-stone-200 rounded-lg transition-colors text-sm"
+                                    >
+                                        <RotateCcw size={16} /> <span className="hidden md:inline">重置 Reset</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Import Modal */}
+                        {showImportModal && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+                                    <div className="p-6 border-b border-stone-200 flex justify-between items-center">
+                                        <h3 className="text-xl font-bold text-stone-800 flex items-center gap-2">
+                                            <Upload size={20} /> 批量匯入名單 / Batch Import
+                                        </h3>
+                                        <button onClick={() => setShowImportModal(false)} className="text-stone-400 hover:text-stone-600">
+                                            <X size={24} />
+                                        </button>
+                                    </div>
+                                    <div className="p-6">
+                                        <p className="text-sm text-stone-500 mb-3">
+                                            每行一位學生。格式：「姓名」或「姓名 學號」。
+                                            <br/>
+                                            One student per line. Format: "Name" or "Name ID".
+                                        </p>
+                                        <textarea
+                                            className="w-full h-64 p-4 border border-stone-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                                            placeholder={`Example:\n王大明 A11001\nJohn Doe A11002\nJane`}
+                                            value={importText}
+                                            onChange={(e) => setImportText(e.target.value)}
+                                        ></textarea>
+                                    </div>
+                                    <div className="p-6 border-t border-stone-200 bg-stone-50 flex justify-end gap-3">
+                                        <button 
+                                            onClick={() => setShowImportModal(false)}
+                                            className="px-4 py-2 text-stone-600 hover:bg-stone-200 rounded-lg font-medium"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button 
+                                            onClick={handleBulkImport}
+                                            className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium shadow-sm"
+                                        >
+                                            Import
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Export Code Modal */}
+                        {showExportCodeModal && (
+                            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-2xl shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+                                    <div className="p-6 border-b border-stone-200 flex justify-between items-center bg-slate-50">
+                                        <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                            <Code size={20} /> 匯出資料為程式碼 / Export to Code
+                                        </h3>
+                                        <button onClick={() => setShowExportCodeModal(false)} className="text-stone-400 hover:text-stone-600">
+                                            <X size={24} />
+                                        </button>
+                                    </div>
+                                    <div className="p-6 overflow-y-auto">
+                                        <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded text-sm text-yellow-800">
+                                            <p className="font-bold">如何更新 GitHub Pages？ (How to update GitHub Pages)</p>
+                                            <ol className="list-decimal ml-5 mt-1 space-y-1">
+                                                <li>Copy code below. (複製下方代碼)</li>
+                                                <li>Go to source code editor. (回到程式編輯器)</li>
+                                                <li>Find and replace <code>const initialData = [...];</code> block. (找到並覆蓋該區塊)</li>
+                                                <li>Commit & Push to GitHub.</li>
+                                            </ol>
+                                        </div>
+                                        <div className="relative">
+                                            <pre className="w-full h-64 p-4 bg-slate-800 text-slate-100 rounded-xl overflow-auto font-mono text-sm border border-slate-700">
+                                                {exportCodeText}
+                                            </pre>
+                                            <button 
+                                                onClick={copyToClipboard}
+                                                className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg backdrop-blur-sm transition-colors"
+                                                title="Copy"
+                                            >
+                                                <Copy size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="p-6 border-t border-stone-200 bg-stone-50 flex justify-end gap-3">
+                                        <button 
+                                            onClick={() => setShowExportCodeModal(false)}
+                                            className="px-4 py-2 text-stone-600 hover:bg-stone-200 rounded-lg font-medium"
+                                        >
+                                            Close
+                                        </button>
+                                        <button 
+                                            onClick={copyToClipboard}
+                                            className="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg font-medium shadow-sm flex items-center gap-2"
+                                        >
+                                            <Copy size={18} /> Copy Code
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-6 text-center text-stone-400 text-sm">
+                            <p>族語 3 課程管理系統 | Indigenous Language Class Tracker</p>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        };
+
+        const root = createRoot(document.getElementById('root'));
+        root.render(<IndigenousLanguageTracker />);
+    </script>
+</body>
+</html>

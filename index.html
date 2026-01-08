@@ -33,8 +33,6 @@
     <script type="text/babel" data-type="module">
         import React, { useState, useEffect } from 'react';
         import { createRoot } from 'react-dom/client';
-        // 修正: CloudUpload 改為 UploadCloud (或是直接移除如果不需要)
-        // 這裡嘗試使用 Lucide 中確認存在的圖標
         import { 
             Plus, Trash2, RotateCcw, CheckCircle, XCircle, Users, 
             ClipboardCheck, Upload, X, Eraser, Code, Copy, Info, 
@@ -48,7 +46,7 @@
         import { getFirestore, collection, doc, setDoc, onSnapshot, updateDoc, deleteDoc } from "firebase/firestore";
 
         // ==========================================
-        // 🔑 您的 Firebase 設定檔 (已填入)
+        // 🔑 您的 Firebase 設定檔
         // ==========================================
         const firebaseConfig = {
           apiKey: "AIzaSyDIOlzNjqvtK14VpInrJtvlayK5L_lsTmE",
@@ -62,18 +60,19 @@
 
         // 初始化 Firebase
         let db;
-        let analytics;
         try {
             const app = initializeApp(firebaseConfig);
-            analytics = getAnalytics(app); // 啟動分析功能
-            db = getFirestore(app); // 啟動資料庫功能
+            const analytics = getAnalytics(app);
+            db = getFirestore(app);
             console.log("Firebase initialized successfully");
         } catch (error) {
             console.error("Firebase initialization failed:", error);
         }
 
         const IndigenousLanguageTracker = () => {
-            // 原始名單 (用於初始化資料庫)
+            // ==========================================
+            // 📝 初始名單資料 (完整 17 位學生)
+            // ==========================================
             const initialData = [
                 { id: 1, name: "史翎", studentId: "11106210", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
                 { id: 2, name: "王妤君", studentId: "11206201", regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: "幼兒教育學系" },
@@ -96,17 +95,17 @@
 
             const [students, setStudents] = useState([]);
             const [isLoading, setIsLoading] = useState(true);
-            const [errorMsg, setErrorMsg] = useState("");
+            const [errorInfo, setErrorInfo] = useState(null); // 改為存儲物件以包含連結
 
             const [newStudentName, setNewStudentName] = useState('');
             const [newStudentId, setNewStudentId] = useState('');
             const [showImportModal, setShowImportModal] = useState(false);
             const [importText, setImportText] = useState('');
 
-            // 🔹 監聽 Firebase 資料庫變化 (Real-time Listener)
+            // 🔹 監聽 Firebase 資料庫變化
             useEffect(() => {
                 if (!db) {
-                    setErrorMsg("Firebase 初始化失敗，請檢查 Config。");
+                    setErrorInfo({ title: "初始化錯誤", desc: "Firebase Config 設定有誤。" });
                     setIsLoading(false);
                     return;
                 }
@@ -115,19 +114,37 @@
                 const unsubscribe = onSnapshot(collection(db, "students"), 
                     (snapshot) => {
                         const studentsData = snapshot.docs.map(doc => ({
-                            id: Number(doc.id), // ID 轉回數字方便排序
+                            id: Number(doc.id),
                             ...doc.data()
                         }));
-                        // 依照 ID 排序
                         studentsData.sort((a, b) => a.id - b.id);
                         
                         setStudents(studentsData);
                         setIsLoading(false);
+                        setErrorInfo(null); // 成功連線則清除錯誤
                     }, 
                     (error) => {
                         console.error("讀取資料失敗:", error);
-                        // 常見錯誤：權限不足 (需要設定 Firestore Rules 為 Test Mode)
-                        setErrorMsg("無法讀取資料庫。請確認 Firebase Firestore 規則是否已設為公開 (Test Mode)，或檢查 Cloud Firestore API 是否已啟用。");
+                        // 根據錯誤代碼提供精確引導
+                        if (error.code === 'permission-denied') {
+                            setErrorInfo({
+                                title: "權限不足 (Permission Denied)",
+                                desc: "Firestore 安全規則未設為公開。請前往 Rules 頁面，將規則改為 allow read, write: if true;",
+                                link: "https://console.firebase.google.com/project/indigenous-class-tracker-58cd7/firestore/rules"
+                            });
+                        } else if (error.code === 'not-found') {
+                            setErrorInfo({
+                                title: "資料庫未建立 (Database Not Found)",
+                                desc: "您的專案尚未建立 Firestore 資料庫。請點擊下方按鈕，選擇 'Create Database' 並務必選取 'Start in test mode'。",
+                                link: "https://console.firebase.google.com/project/indigenous-class-tracker-58cd7/firestore"
+                            });
+                        } else {
+                            setErrorInfo({
+                                title: "連線錯誤",
+                                desc: `無法連線到資料庫 (${error.code})。請檢查網路連線。`,
+                                link: null
+                            });
+                        }
                         setIsLoading(false);
                     }
                 );
@@ -135,29 +152,22 @@
                 return () => unsubscribe();
             }, []);
 
-            // 🔹 切換狀態 (直接寫入雲端)
+            // 🔹 切換狀態
             const toggleStatus = async (id, field) => {
                 const student = students.find(s => s.id === id);
                 if (!student) return;
-
                 try {
                     const docRef = doc(db, "students", id.toString());
-                    await updateDoc(docRef, {
-                        [field]: !student[field]
-                    });
-                } catch (e) {
-                    alert("更新失敗：" + e.message);
-                }
+                    await updateDoc(docRef, { [field]: !student[field] });
+                } catch (e) { alert("更新失敗：" + e.message); }
             };
 
-            // 🔹 更新備註 (失去焦點時寫入雲端，避免輸入卡頓)
+            // 🔹 更新備註
             const handleNoteBlur = async (id, currentVal) => {
                 try {
                     const docRef = doc(db, "students", id.toString());
                     await updateDoc(docRef, { note: currentVal });
-                } catch (e) {
-                    console.error("備註更新失敗", e);
-                }
+                } catch (e) { console.error("備註更新失敗", e); }
             };
 
             // 🔹 新增學生
@@ -170,29 +180,19 @@
                     id: newId,
                     name: newStudentName,
                     studentId: newStudentId,
-                    regular: false,
-                    midterm: false,
-                    final0102: false,
-                    final0109: false,
-                    oral: false,
-                    needsRevision: false,
-                    note: ""
+                    regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: ""
                 };
                 
                 try {
                     await setDoc(doc(db, "students", newId.toString()), newStudent);
-                    setNewStudentName('');
-                    setNewStudentId('');
-                } catch (e) {
-                    alert("新增失敗：" + e.message);
-                }
+                    setNewStudentName(''); setNewStudentId('');
+                } catch (e) { alert("新增失敗：" + e.message); }
             };
 
             // 🔹 批量匯入
             const handleBulkImport = async () => {
                 if (!importText.trim()) return;
                 const lines = importText.trim().split('\n');
-                
                 let count = 0;
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i];
@@ -203,53 +203,39 @@
 
                     const newId = Date.now() + i;
                     const newStudent = {
-                        id: newId,
-                        name: name,
-                        studentId: studentId,
-                        regular: false,
-                        midterm: false,
-                        final0102: false,
-                        final0109: false,
-                        oral: false,
-                        needsRevision: false,
-                        note: ""
+                        id: newId, name: name, studentId: studentId,
+                        regular: false, midterm: false, final0102: false, final0109: false, oral: false, needsRevision: false, note: ""
                     };
                     await setDoc(doc(db, "students", newId.toString()), newStudent);
                     count++;
                 }
-                
                 alert(`成功匯入 ${count} 筆資料！`);
-                setImportText('');
-                setShowImportModal(false);
+                setImportText(''); setShowImportModal(false);
             };
 
-            // 🔹 刪除學生
+            // 🔹 刪除
             const deleteStudent = async (id) => {
-                if (window.confirm('確定要刪除這位學生嗎？(此動作將同步刪除雲端資料)')) {
+                if (window.confirm('確定要刪除這位學生嗎？')) {
                     await deleteDoc(doc(db, "students", id.toString()));
                 }
             };
 
-            // 🔹 🚀 一鍵初始化資料庫 (將 17 筆名單上傳)
+            // 🔹 初始化資料庫
             const uploadInitialData = async () => {
-                if (!window.confirm("確定要初始化資料庫嗎？這將會把預設的 17 位學生名單寫入雲端。")) return;
-                
+                if (!window.confirm("確定要初始化資料庫嗎？將寫入 17 位學生名單。")) return;
                 setIsLoading(true);
                 try {
                     for (const student of initialData) {
                         await setDoc(doc(db, "students", student.id.toString()), student);
                     }
-                    alert("✅ 初始化完成！資料已上傳到 Firebase。");
-                } catch (e) {
-                    alert("❌ 初始化失敗：" + e.message);
-                }
+                    alert("✅ 初始化完成！");
+                } catch (e) { alert("❌ 初始化失敗：" + e.message); }
                 setIsLoading(false);
             };
 
-            // 🔹 清空所有資料
+            // 🔹 清空
             const clearAllData = async () => {
-                if (!window.confirm('確定要清空「所有」雲端資料嗎？此動作無法復原！')) return;
-                
+                if (!window.confirm('確定要清空「所有」雲端資料嗎？')) return;
                 setIsLoading(true);
                 const batchPromises = students.map(s => deleteDoc(doc(db, "students", s.id.toString())));
                 await Promise.all(batchPromises);
@@ -268,19 +254,32 @@
                 pending: students.filter(s => !checkPass(s)).length
             };
 
-            if (isLoading && students.length === 0) {
-                return <div className="min-h-screen flex items-center justify-center text-stone-500">
-                    載入雲端資料中... (Loading Cloud Data...)
-                </div>;
+            // 錯誤處理畫面
+            if (errorInfo) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center text-red-600 gap-4 p-4 bg-red-50">
+                        <AlertCircle size={48} />
+                        <div className="text-xl font-bold">連線錯誤 (Connection Error)</div>
+                        <div className="bg-white p-6 rounded-lg shadow-md max-w-lg border border-red-200">
+                            <p className="font-bold mb-2 text-lg text-red-700">{errorInfo.title}</p>
+                            <p className="mb-4 text-stone-700 leading-relaxed">{errorInfo.desc}</p>
+                            {errorInfo.link && (
+                                <a 
+                                    href={errorInfo.link} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors shadow-sm font-bold"
+                                >
+                                    前往 Firebase 設定 <ExternalLink size={16} />
+                                </a>
+                            )}
+                        </div>
+                    </div>
+                );
             }
 
-            if (errorMsg) {
-                return <div className="min-h-screen flex flex-col items-center justify-center text-red-600 gap-4 p-4">
-                    <AlertCircle size={48} />
-                    <div className="text-xl font-bold">連線錯誤 (Connection Error)</div>
-                    <p>{errorMsg}</p>
-                    <p className="text-sm text-stone-500">請確認 Firebase Console 中的 Firestore Rules 是否設定正確，以及 API 是否已啟用。</p>
-                </div>;
+            if (isLoading && students.length === 0) {
+                return <div className="min-h-screen flex items-center justify-center text-stone-500">載入雲端資料中... (Loading Cloud Data...)</div>;
             }
 
             return (
